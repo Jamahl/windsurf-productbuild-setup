@@ -1,0 +1,7 @@
+crewai==0.134.0
+langchain==0.2.5
+langchain-openai==0.1.9
+python-dotenv==1.0.1
+pydantic==2.7.4
+flask==3.0.3
+flask-cors==4.0.1

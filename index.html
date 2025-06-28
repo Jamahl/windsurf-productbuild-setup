@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Dev Crew - Turn Ideas into Code</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .status-section.active {
+            display: block;
+        }
+
+        .status-message {
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-output {
+            margin-top: 20px;
+        }
+
+        .file-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .file-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .file-content {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #fee;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .success {
+            color: #27ae60;
+            background: #e8f8f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 AI Dev Crew</h1>
+        <p class="subtitle">Transform your software ideas into executable plans with our AI agents</p>
+        
+        <div class="input-section">
+            <label for="idea">Describe your software idea:</label>
+            <textarea 
+                id="idea" 
+                placeholder="Example: I want to build a task management app with user authentication, real-time collaboration, and AI-powered task prioritization..."
+            ></textarea>
+            <button id="processBtn" onclick="processIdea()">
+                Generate Development Plan
+            </button>
+        </div>
+
+        <div id="statusSection" class="status-section">
+            <div id="statusMessage" class="status-message"></div>
+            <div id="chatSection" class="chat-section" style="display:none; margin-top:20px;"></div>
+            <div id="fileOutput" class="file-output"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let statusCheckInterval = null;
+        let chatActive = false;
+        let chatHistory = [];
+
+        async function processIdea() {
+            const ideaInput = document.getElementById('idea');
+            const idea = ideaInput.value.trim();
+            
+            if (!idea) {
+                alert('Please describe your software idea first!');
+                return;
+            }
+
+            // Disable button and show status
+            const processBtn = document.getElementById('processBtn');
+            processBtn.disabled = true;
+            processBtn.innerHTML = 'Processing... <span class="loading"></span>';
+            
+            // Show status section
+            const statusSection = document.getElementById('statusSection');
+            statusSection.classList.add('active');
+            updateStatus('Submitting your idea to AI Dev Crew...', 'processing');
+
+            try {
+                // Submit idea
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ idea }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to submit idea');
+                }
+
+                const data = await response.json();
+                currentJobId = data.job_id;
+                chatActive = true;
+                chatHistory = [{role: 'user', content: idea}];
+                // Poll for agent_qa and display first agent response before enabling chat input
+                await pollForFirstAgentResponse();
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                processBtn.disabled = false;
+                processBtn.textContent = 'Generate Development Plan';
+            }
+        }
+
+        async function pollForFirstAgentResponse() {
+            // Poll job status until agent_qa and qa_last is present
+            let done = false;
+            while (!done) {
+                const response = await fetch(`/api/status/${currentJobId}`);
+                const data = await response.json();
+                if (data.status === 'agent_qa' && data.qa_last) {
+                    // Add agent's first message to chat history
+                    chatHistory.push({role: 'agent', content: data.qa_last});
+                    showChatSection();
+                    done = true;
+                } else if (data.status === 'awaiting_user_prd_approval') {
+                    chatActive = false;
+                    displayPRDForApproval(data.result['prd.md']);
+                    done = true;
+                } else if (data.status === 'error') {
+                    updateStatus(`Error: ${data.error || 'Unknown error occurred'}`, 'error');
+                    resetButton();
+                    done = true;
+                } else {
+                    await new Promise(res => setTimeout(res, 1000));
+                }
+            }
+        }
+
+        async function checkStatus() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/api/status/${currentJobId}`);
+                const data = await response.json();
+
+                updateStatus(data.message, data.status);
+
+                if (data.status === 'completed') {
+                    clearInterval(statusCheckInterval);
+                    displayResults(data.result);
+                    resetButton();
+                } else if (data.status === 'awaiting_user_prd_approval') {
+                    clearInterval(statusCheckInterval);
+                    chatActive = false;
+                    displayPRDForApproval(data.result['prd.md']);
+                } else if (data.status === 'agent_qa') {
+                    // Show chat UI
+                    showChatSection();
+                } else if (data.status === 'error') {
+                    clearInterval(statusCheckInterval);
+                    updateStatus(`Error: ${data.error || 'Unknown error occurred'}`, 'error');
+                    resetButton();
+                }
+            } catch (error) {
+                clearInterval(statusCheckInterval);
+                updateStatus(`Error checking status: ${error.message}`, 'error');
+                resetButton();
+            }
+        }
+
+        function showChatSection() {
+            const chatSection = document.getElementById('chatSection');
+            chatSection.style.display = 'block';
+            chatSection.innerHTML = '';
+            // Chat history
+            const chatWindow = document.createElement('div');
+            chatWindow.setAttribute('id', 'chatWindow');
+            chatWindow.style.maxHeight = '300px';
+            chatWindow.style.overflowY = 'auto';
+            chatWindow.style.background = '#f9f9ff';
+            chatWindow.style.padding = '15px';
+            chatWindow.style.borderRadius = '10px';
+            chatWindow.style.marginBottom = '10px';
+            chatHistory.forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.style.marginBottom = '8px';
+                msgDiv.innerHTML = `<b>${msg.role === 'agent' ? 'Agent' : 'You'}:</b> ` + msg.content;
+                chatWindow.appendChild(msgDiv);
+            });
+            chatSection.appendChild(chatWindow);
+            // Input area
+            if (chatActive) {
+                const inputDiv = document.createElement('div');
+                inputDiv.style.display = 'flex';
+                inputDiv.style.gap = '10px';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'chatInput';
+                input.placeholder = 'Type your answer...';
+                input.setAttribute('aria-label', 'Type your answer to the agent');
+                input.setAttribute('tabindex', '0');
+                input.style.flex = '1';
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') sendChatMessage();
+                });
+                const sendBtn = document.createElement('button');
+                sendBtn.textContent = 'Send';
+                sendBtn.onclick = sendChatMessage;
+                sendBtn.setAttribute('aria-label', 'Send your answer');
+                inputDiv.appendChild(input);
+                inputDiv.appendChild(sendBtn);
+                chatSection.appendChild(inputDiv);
+                input.focus();
+            }
+        }
+
+        async function startChatLoop() {
+            // Wait for agent's first question
+            await pollChatStatus();
+        }
+
+        async function pollChatStatus() {
+            // Poll job status until agent_qa or awaiting_user_prd_approval
+            let done = false;
+            while (!done) {
+                const response = await fetch(`/api/status/${currentJobId}`);
+                const data = await response.json();
+                if (data.status === 'agent_qa') {
+                    // Parse agent's last message
+                    const last = data.qa_last || '';
+                    if (last && (!chatHistory.length || chatHistory[chatHistory.length-1].content !== last)) {
+                        chatHistory.push({role: 'agent', content: last});
+                    }
+                    showChatSection();
+                    done = true;
+                } else if (data.status === 'awaiting_user_prd_approval') {
+                    chatActive = false;
+                    displayPRDForApproval(data.result['prd.md']);
+                    done = true;
+                } else if (data.status === 'error') {
+                    updateStatus(`Error: ${data.error || 'Unknown error occurred'}`, 'error');
+                    resetButton();
+                    done = true;
+                } else {
+                    await new Promise(res => setTimeout(res, 1000));
+                }
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+            chatHistory.push({role: 'user', content: msg});
+            showChatSection();
+            // Send to backend
+            try {
+                const response = await fetch('/api/agent_qa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: currentJobId, message: msg })
+                });
+                const data = await response.json();
+                if (data.status === 'agent_qa') {
+                    chatHistory.push({role: 'agent', content: data.message});
+                    showChatSection();
+                } else if (data.status === 'awaiting_user_prd_approval') {
+                    chatActive = false;
+                    displayPRDForApproval(data.prd);
+                } else if (data.error) {
+                    updateStatus(`Error: ${data.error}`, 'error');
+                    resetButton();
+                }
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                resetButton();
+            }
+        }
+
+        function displayPRDForApproval(prdContent) {
+            const fileOutput = document.getElementById('fileOutput');
+            fileOutput.innerHTML = '';
+
+            const prdCard = document.createElement('div');
+            prdCard.className = 'file-card';
+
+            const title = document.createElement('h3');
+            title.textContent = '📝 Review & Approve PRD';
+            prdCard.appendChild(title);
+
+            const textarea = document.createElement('textarea');
+            textarea.value = prdContent || '';
+            textarea.rows = 16;
+            textarea.id = 'prdApprovalArea';
+            textarea.setAttribute('aria-label', 'Edit PRD before approval');
+            textarea.setAttribute('tabindex', '0');
+            textarea.setAttribute('readonly', 'readonly');
+            prdCard.appendChild(textarea);
+
+            let isEditing = false;
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit PRD';
+            editBtn.setAttribute('aria-label', 'Edit PRD');
+            editBtn.setAttribute('tabindex', '0');
+            editBtn.style.marginRight = '10px';
+            editBtn.onclick = function() {
+                if (!isEditing) {
+                    textarea.removeAttribute('readonly');
+                    textarea.focus();
+                    isEditing = true;
+                    editBtn.textContent = 'Save Changes';
+                } else {
+                    textarea.setAttribute('readonly', 'readonly');
+                    isEditing = false;
+                    editBtn.textContent = 'Edit PRD';
+                }
+            };
+            prdCard.appendChild(editBtn);
+
+            const approveBtn = document.createElement('button');
+            approveBtn.textContent = 'Approve & Continue';
+            approveBtn.onclick = async function() {
+                approveBtn.disabled = true;
+                approveBtn.textContent = 'Processing...';
+                updateStatus('Submitting approved PRD...', 'processing');
+                await approvePRD(textarea.value);
+            };
+            approveBtn.setAttribute('aria-label', 'Approve PRD and continue');
+            approveBtn.setAttribute('tabindex', '0');
+            prdCard.appendChild(approveBtn);
+
+            fileOutput.appendChild(prdCard);
+        }
+
+        async function approvePRD(prdContent) {
+            try {
+                const response = await fetch('/api/approve_prd', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: currentJobId, prd_content: prdContent })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to approve PRD');
+                }
+                // Start polling again for completion
+                statusCheckInterval = setInterval(checkStatus, 2000);
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                resetButton();
+            }
+        }
+
+        function updateStatus(message, status) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            
+            if (status === 'processing') {
+                statusMessage.innerHTML = message + ' <span class="loading"></span>';
+            }
+        }
+
+        function displayResults(result) {
+            const fileOutput = document.getElementById('fileOutput');
+            fileOutput.innerHTML = '';
+
+            // Modal root (only one in DOM)
+            let modal = document.getElementById('modalRoot');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'modalRoot';
+                modal.style.display = 'none';
+                modal.style.position = 'fixed';
+                modal.style.top = '0';
+                modal.style.left = '0';
+                modal.style.width = '100vw';
+                modal.style.height = '100vh';
+                modal.style.background = 'rgba(0,0,0,0.5)';
+                modal.style.justifyContent = 'center';
+                modal.style.alignItems = 'center';
+                modal.style.zIndex = '9999';
+                modal.innerHTML = `<div id="modalContent" style="background:white;max-width:600px;width:90%;margin:auto;padding:30px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);position:relative;">
+                    <button id="closeModalBtn" aria-label="Close file viewer" style="position:absolute;top:10px;right:10px;font-size:1.3em;background:none;border:none;cursor:pointer;">&times;</button>
+                    <h2 id="modalTitle" style="margin-bottom:15px;font-size:1.3em;color:#667eea;"></h2>
+                    <pre id="modalBody" style="background:#f8f9fa;padding:18px;border-radius:8px;max-height:60vh;overflow:auto;font-size:15px;white-space:pre-wrap;"></pre>
+                </div>`;
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) closeModal();
+                });
+                document.body.appendChild(modal);
+            }
+            function showModal(title, content) {
+                document.getElementById('modalTitle').textContent = title;
+                document.getElementById('modalBody').textContent = content;
+                modal.style.display = 'flex';
+                document.getElementById('closeModalBtn').onclick = closeModal;
+                document.getElementById('closeModalBtn').focus();
+            }
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+
+            if (result.files) {
+                const successMsg = document.createElement('div');
+                successMsg.className = 'success';
+                successMsg.textContent = '✅ Successfully generated all files!';
+                fileOutput.appendChild(successMsg);
+
+                // Display each file
+                Object.entries(result.files).forEach(([filename, content]) => {
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'file-card';
+                    
+                    const title = document.createElement('h3');
+                    title.textContent = `📄 ${filename}`;
+                    title.style.cursor = 'pointer';
+                    title.setAttribute('tabindex', '0');
+                    title.setAttribute('aria-label', `View ${filename}`);
+                    title.onclick = () => showModal(filename, content);
+                    title.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') showModal(filename, content); };
+                    fileCard.appendChild(title);
+                    
+                    const fileContent = document.createElement('div');
+                    fileContent.className = 'file-content';
+                    fileContent.textContent = content || '(Empty file)';
+                    fileCard.appendChild(fileContent);
+
+                    // Download button (new component, non-intrusive)
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download';
+                    downloadBtn.setAttribute('aria-label', `Download ${filename}`);
+                    downloadBtn.setAttribute('tabindex', '0');
+                    downloadBtn.onclick = function() {
+                        const blob = new Blob([content], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => {
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }, 0);
+                    };
+                    fileCard.appendChild(downloadBtn);
+                    
+                    fileOutput.appendChild(fileCard);
+                });
+            }
+        }
+
+        function resetButton() {
+            const processBtn = document.getElementById('processBtn');
+            processBtn.disabled = false;
+            processBtn.textContent = 'Generate Development Plan';
+        }
+
+        // Check API health on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/health');
+                if (!response.ok) {
+                    console.error('API health check failed');
+                }
+            } catch (error) {
+                console.error('Cannot connect to API:', error);
+                alert('Cannot connect to the backend. Make sure the Flask server is running.');
+            }
+        });
+    </script>
+</body>
+</html>
