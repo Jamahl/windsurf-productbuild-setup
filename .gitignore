@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Windsurf
+.windsurf/
+
+# Output/generated files
+prd.md
+tasks.md
+prompt.md
+
+# Misc
+*.log
+*.sqlite3
+
+# Node (if ever used for frontend)
+node_modules/
